@@ -29,7 +29,7 @@ function downloadImage () {
 	request.head(current.url, () => {
 		request(current.url).pipe(fs.createWriteStream(fileName))
 	})
-	if (cachedImages.length > 0) setTimeout(downloadImage, 50)
+	if (cachedImages.length > 0) setTimeout(downloadImage, 100)
 }
 
 // To download images from page

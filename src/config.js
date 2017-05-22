@@ -3,7 +3,7 @@ export default {
 		text: ['下一頁'],
 		class: ['el-card-visual-content']
 	},
-	imagePattern: ['https://shadowverse-portal.com/image/card/zh-tw/'],
+	imagePattern: ['https://shadowverse-portal.com/image/card/zh-tw/', 'https://shadowverse-portal.com/image/card/en/'],
 	deep: 2,
 	savePath: 'downloads',
 	url: 'https://shadowverse-portal.com',
