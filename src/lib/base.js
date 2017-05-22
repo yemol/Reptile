@@ -5,15 +5,12 @@ import tools from './tools'
 import WatchArray from './watchedList'
 
 // this is a internal cache used to save items need to be checked
-let cached = new WatchArray()
+let cached = []
 // this is a list used to save items has been operated and we can release them to next step
-let processed = new WatchArray()
-// This is place we used to save all processed items.
-// We use this array to make sure we will not check save item more than once.
-let checked = []
+let processed = null
 
 exports.finished = () => {
-	return cached.isEmpty() && processed.isEmpty()
+	return cached.length === 0
 }
 
 exports.start = (url, callback) => {
@@ -21,29 +18,22 @@ exports.start = (url, callback) => {
 	cached.push(url)
 	// We need to init watchedList before we can use it.
 	// We need to define callback method in init progress.
-	cached.start(fetchLink)
-	// processed.start(callback)
-	keepalive()
-}
-
-function keepalive () {
-	if (!(cached.isEmpty() && processed.isEmpty())) {
-		setTimeout(keepalive, 100)
-	}
+	processed = new WatchArray(callback)
+	fetchLink()
 }
 
 function fetchLink () {
 	let url = cached.pop()
 	// We need to check if current item is a duplicate item.
-	if (tools.contains(checked, url)) {
+	if (processed.contains(url)) {
 		return
 	}
-	console.log(url)
 	var instance = axios.create({
 		timeout: 100000,
 		headers: {
 			'User-Agent': config.UserAgent,
-			'Accept-Language': 'zh-CN,zh;q=0.8'
+			'Accept-Language': 'zh-CN,zh;q=0.8',
+			'Cookie': config.Cookie
 		}
 	})
 	instance.get(url)
@@ -61,13 +51,15 @@ function fetchLink () {
 				}
 			})
 		}
-		console.log(url)
-		// We need to save processed item in checked list here to provent it from being chekced again.
-		checked.push(url)
+		// handle it to next step
 		processed.push(url)
+		if (cached.length > 0) setTimeout(fetchLink, 50)
 	})
 	.catch(function (error) {
 		console.log(error)
-		cached.push(url)
+		// We need to check this url again.
+		cached.unshift(url)
+		// Starting a new loop
+		setTimeout(fetchLink, 50)
 	})
 }

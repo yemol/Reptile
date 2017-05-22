@@ -7,48 +7,40 @@ import fs from 'fs'
 import path from 'path'
 import request from 'request'
 
-let before = null
 // images that we need to download
 const cachedImages = []
-// images that we have downloaded
-const savedImages = []
-// this is used to save all urls that we have processed. The urls in this list will be send to next processor.
-const processed = []
-exports.processed = processed
+const savedPath = path.join(__dirname, '../../' + config.savePath)
 
-exports.start = (base) => {
-	before = base
-	goDownload()
-}
-
-function downloadImage (url, name) {
-	let savedPath = path.join(__dirname, '../../' + config.savePath)
-	let fileName = path.join(savedPath, name + '.png')
+function downloadImage () {
+	let current = cachedImages.pop()
+	// make sure we have something to handle
+	if (current === null || current === undefined) { return }
+	// format of filename will be id_name.png
+	let fileName = current.url.substr(current.url.lastIndexOf('/'))
+	fileName = fileName.substr(0, fileName.lastIndexOf('.') + 4)
+	fileName = fileName.replace('.', '__' + current.alt + '.')
+	fileName = path.join(savedPath, fileName)
 	if (!fs.existsSync(savedPath)) {
 		fs.mkdirSync(savedPath)
 	}
 	// we will skip the image if it has been downloaded
 	if (fs.existsSync(fileName)) { return }
 	// start downloading image
-	request.head(url, () => {
-		request(url).pipe(fs.createWriteStream(fileName))
+	request.head(current.url, () => {
+		request(current.url).pipe(fs.createWriteStream(fileName))
 	})
+	if (cachedImages.length > 0) setTimeout(downloadImage, 50)
 }
 
 // To download images from page
-function goDownload () {
-	let url = before.processed.pop()
-	// We need to loop the processor if we do not get any item to check in this round.
-	if (url === null || url === undefined) {
-		setTimeout(goDownload, 100)
-		return
-	}
-	console.log('download images from [' + url + ']')
+exports.start = (url) => {
+	console.log('get images from [' + url + ']')
 	var instance = axios.create({
 		timeout: 100000,
 		headers: {
 			'User-Agent': config.UserAgent,
-			'Accept-Language': config.acceptLanguage
+			'Accept-Language': config.acceptLanguage,
+			'Cookie': config.Cookie
 		}
 	})
 	instance.get(url)
@@ -62,14 +54,11 @@ function goDownload () {
 					let imgUrl = element.attribs.src === undefined || element.attribs.src.length === 0 ? element.attribs['data-src'] : element.attribs.src
 					console.log(imgUrl + '|' + element.attribs.alt)
 					cachedImages.unshift({url: imgUrl, alt: element.attribs.alt})
-					console.log('cachedImages length = ' + cachedImages.length)
 				}
 			})
 		}
-		// handle processed url to next processor
-		processed.unshift(url)
-		// start a new loop
-		setTimeout(goDownload, 100)
+		// start downloading images that we marked
+		downloadImage()
 	})
 	.catch(function (error) {
 		console.log(error)
