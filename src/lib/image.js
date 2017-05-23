@@ -10,11 +10,11 @@ import request from 'request'
 // images that we need to download
 const cachedImages = []
 const savedPath = path.join(__dirname, '../../' + config.savePath)
+let startDownloading = false
 
 function downloadImage () {
+	startDownloading = !startDownloading
 	let current = cachedImages.pop()
-	// make sure we have something to handle
-	if (current === null || current === undefined) { return }
 	// format of filename will be id_name.png
 	let fileName = current.url.substr(current.url.lastIndexOf('/'))
 	fileName = fileName.substr(0, fileName.lastIndexOf('.') + 4)
@@ -28,8 +28,14 @@ function downloadImage () {
 	// start downloading image
 	request.head(current.url, () => {
 		request(current.url).pipe(fs.createWriteStream(fileName))
+		if (cachedImages.length > 0) setTimeout(downloadImage, 50)
+		console.log('download image: ' + current.url)
 	})
-	if (cachedImages.length > 0) setTimeout(downloadImage, 100)
+}
+
+exports.finished = () => {
+	console.log(cachedImages.length)
+	return cachedImages.length === 0
 }
 
 // To download images from page
@@ -52,13 +58,12 @@ exports.start = (url) => {
 				// we will check both src and data-src attribute for lazy downlaod supported pages.
 				if (tools.partlyContains(config.imagePattern, element.attribs['data-src']) || tools.partlyContains(config.imagePattern, element.attribs['src'])) {
 					let imgUrl = element.attribs.src === undefined || element.attribs.src.length === 0 ? element.attribs['data-src'] : element.attribs.src
-					console.log(imgUrl + '|' + element.attribs.alt)
 					cachedImages.unshift({url: imgUrl, alt: element.attribs.alt})
 				}
 			})
 		}
 		// start downloading images that we marked
-		downloadImage()
+		if (cachedImages.length > 0) setTimeout(downloadImage, 50)
 	})
 	.catch(function (error) {
 		console.log(error)

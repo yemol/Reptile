@@ -25,8 +25,8 @@ exports.start = (url, callback) => {
 function fetchLink () {
 	let url = cached.pop()
 	// We need to check if current item is a duplicate item.
-	if (processed.contains(url)) {
-		return
+	while (processed.contains(url)) {
+		url = cached.pop()
 	}
 	var instance = axios.create({
 		timeout: 100000,
@@ -43,11 +43,11 @@ function fetchLink () {
 			dom('a').each((index, element) => {
 				// search by text
 				if (tools.contains(config.links.text, dom(element).text())) {
-					cached.push(config.url + element.attribs.href)
+					cached.unshift(config.url + element.attribs.href)
 				}
 				// search by class
 				if (tools.contains(config.links.class, element.attribs.class)) {
-					cached.push(config.url + element.attribs.href)
+					cached.unshift(config.url + element.attribs.href)
 				}
 			})
 		}
